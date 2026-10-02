@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "undolog"
 version = "0.1.0"
 description = "Append-only ledger, taxonomy, and rollback engine for agent side effects"
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "undolog-core",
