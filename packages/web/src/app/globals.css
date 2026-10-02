@@ -1,0 +1,210 @@
+body {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  background: #f7f7f5;
+  color: #222;
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 4rem;
+}
+
+.site-header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.8rem 1.5rem;
+  background: #1d1f21;
+  color: #eee;
+}
+.site-header a {
+  color: #eee;
+  text-decoration: none;
+  font-weight: bold;
+}
+.site-sub {
+  color: #999;
+  font-size: 12px;
+}
+
+h1 {
+  font-size: 20px;
+}
+h2 {
+  font-size: 15px;
+  margin-top: 2rem;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  background: #fff;
+}
+th,
+td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #e3e1dc;
+  vertical-align: top;
+}
+th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #777;
+}
+tr.tl-row {
+  cursor: pointer;
+}
+tr.tl-row:hover {
+  background: #faf9f6;
+}
+
+/* class color coding */
+.cls-reversible {
+  color: #1a7f37;
+  font-weight: bold;
+}
+.cls-compensatable {
+  color: #9a6700;
+  font-weight: bold;
+}
+.cls-irreversible {
+  color: #cf222e;
+  font-weight: bold;
+}
+.cls-unknown {
+  color: #6e7781;
+  font-weight: bold;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  border: 1px solid #ccc;
+  background: #eee;
+}
+.badge-applied {
+  background: #ddf4e4;
+  border-color: #1a7f37;
+  color: #1a7f37;
+}
+.badge-compensated {
+  background: #fff8c5;
+  border-color: #9a6700;
+  color: #9a6700;
+}
+.badge-failed {
+  background: #ffebe9;
+  border-color: #cf222e;
+  color: #cf222e;
+}
+
+.frozen-banner {
+  background: #ddf4ff;
+  border: 1px solid #0969da;
+  color: #0969da;
+  padding: 0.5rem 0.8rem;
+  margin: 1rem 0;
+  border-radius: 4px;
+}
+
+.diff {
+  background: #1d1f21;
+  color: #ddd;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0.4rem 0 0.8rem;
+  white-space: pre;
+}
+.diff .added {
+  background: #123d1e;
+  color: #7ee787;
+}
+.diff .removed {
+  background: #4a1d1d;
+  color: #ffa198;
+  text-decoration: line-through;
+}
+.diff-sign {
+  user-select: none;
+  display: inline-block;
+  width: 1.2em;
+}
+
+.why dl {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 0.2rem 1rem;
+  margin: 0.4rem 0 0.8rem;
+}
+.why dt {
+  color: #777;
+  font-size: 12px;
+}
+.why dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+button {
+  font: inherit;
+  padding: 0.4rem 1rem;
+  border: 1px solid #888;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+button.primary {
+  background: #cf222e;
+  border-color: #cf222e;
+  color: #fff;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rollback-panel {
+  background: #fff;
+  border: 1px solid #d0cdc6;
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+}
+.rollback-panel input[type="range"] {
+  width: 100%;
+}
+.scrub-labels {
+  display: flex;
+  justify-content: space-between;
+  color: #777;
+  font-size: 11px;
+}
+.preview-box {
+  margin-top: 1rem;
+  border-top: 1px dashed #d0cdc6;
+  padding-top: 0.75rem;
+}
+.preview-box ul {
+  margin: 0.4rem 0;
+  padding-left: 1.2rem;
+}
+.running {
+  color: #0969da;
+}
+.error {
+  color: #cf222e;
+  white-space: pre-wrap;
+}
+.muted {
+  color: #777;
+}

@@ -1,0 +1,45 @@
+version: 1
+# Tool Safety Registry — the taxonomy seed. Classes: reversible |
+# compensatable | irreversible. Compensation recipes are structured:
+# {type: restore_before} | {type: refund, target: ...} | {type: none} | ...
+tools:
+  gmail.send:
+    class: irreversible
+    compensation: {type: none}
+    snapshot_capable: false
+  http.webhook_post:
+    class: irreversible
+    compensation: {type: none}
+    snapshot_capable: false
+  stripe.create_refund:
+    class: irreversible
+    compensation: {type: none}
+    snapshot_capable: false
+  stripe.create_charge:
+    class: compensatable
+    compensation: {type: refund, target: stripe}
+    snapshot_capable: false
+  slack.post_message:
+    class: compensatable
+    compensation: {type: delete_message, target: slack}
+    snapshot_capable: false
+  calendar.create_event:
+    class: compensatable
+    compensation: {type: delete_event, target: google_calendar}
+    snapshot_capable: false
+  notion.append_block:
+    class: reversible
+    compensation: {type: restore_before}
+    snapshot_capable: true
+  notion.update_page:
+    class: reversible
+    compensation: {type: restore_before}
+    snapshot_capable: true
+  filesystem.write_file:
+    class: reversible
+    compensation: {type: restore_before}
+    snapshot_capable: true
+  database.execute:
+    class: reversible
+    compensation: {type: restore_before}
+    snapshot_capable: true
