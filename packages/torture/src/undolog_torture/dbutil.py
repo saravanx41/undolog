@@ -28,11 +28,18 @@ def setup_schema(url: str, schema: str) -> None:
     cfg = Config()
     cfg.set_main_option("script_location", str(ALEMBIC_DIR))
     cfg.set_main_option("sqlalchemy.url", url)
+    # Preserve a pre-existing UNDOLOG_SCHEMA (e.g. the web bridge's target
+    # schema): migrations need the variable pointed at OUR schema, but
+    # deleting it afterwards would corrupt the caller's environment.
+    previous = os.environ.get("UNDOLOG_SCHEMA")
     os.environ["UNDOLOG_SCHEMA"] = schema
     try:
         command.upgrade(cfg, "head")
     finally:
-        del os.environ["UNDOLOG_SCHEMA"]
+        if previous is None:
+            del os.environ["UNDOLOG_SCHEMA"]
+        else:
+            os.environ["UNDOLOG_SCHEMA"] = previous
 
 
 def drop_schema(url: str, schema: str) -> None:

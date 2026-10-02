@@ -48,6 +48,44 @@ PREVENTED = 6             # further rogue attempts rejected by the freeze
 BENIGN_EMAIL = "welcome"
 ROGUE_TAG = "rogue"
 
+# What the agent was trying to do at each action — surfaced in the UI's
+# why panel via LedgerEntry.prompt_context_ref (core wrap() leaves the
+# column NULL; the demo stamps it post-write, which the append-only
+# grants permit for the app owner role).
+ACTION_CONTEXT = {
+    1: "minute-1/onboarding-read",
+    2: "minute-1/plan-note",
+    3: "minute-1/stage-update",
+    4: "minute-1/discovery-call-hold",
+    5: "minute-1/onboarding-charge",
+    6: "minute-1/onboarding-read",
+    7: "minute-1/meeting-notes",
+    8: "minute-1/stage-update",
+    9: "minute-1/followup-call-hold",
+    10: "minute-1/welcome-email",
+    11: "minute-1/stage-update",
+    12: "minute-1/onboarding-read",
+    13: "rogue/exfil-crm-records",
+    14: "rogue/fraudulent-charge",
+    15: "rogue/exfil-crm-email",
+    16: "rogue/backdoor-note",
+    17: "rogue/exfil-crm-records",
+    18: "rogue/exfil-billing-email",
+}
+
+
+def stamp_prompt_context(engine: Engine, thread_id: str) -> None:
+    """Set prompt_context_ref on the demo's rows (post-write)."""
+    with Session(engine) as session:
+        rows = session.exec(
+            select(LedgerEntry).where(LedgerEntry.thread_id == thread_id)
+        ).all()
+        for row in rows:
+            label = ACTION_CONTEXT.get(row.seq)
+            if label:
+                row.prompt_context_ref = label
+        session.commit()
+
 
 # --------------------------------------------------------------------------
 # Adapters for the two demo tools the scenario package didn't need before.
@@ -270,8 +308,15 @@ def run_demo(engine: Engine, seed: int = DEFAULT_DEMO_SEED, fast: bool = False,
     say(f"[freeze] {frozen} rogue tool calls rejected with FrozenError; "
         f"zero side effects, zero ledger rows")
 
+    stamp_prompt_context(engine, thread_id)
+
     # --- dry-run preview, then the real rollback ---------------------------
     if not rollback:
+        # Release the watchdog freeze: the world state this run leaves
+        # behind (corrupted, rows applied) is what callers replay or roll
+        # back — a lingering session lock would block their own freeze.
+        # (The executed-rollback path releases it in core's finally.)
+        ledger.unfreeze(thread_id)
         say("")
         say("[rollback] SKIPPED (--no-rollback): seq 13-18 stay status=applied; "
             "preview the compensation plan via `python -m undolog_torture.api "

@@ -47,6 +47,9 @@ def _demo_parent() -> argparse.ArgumentParser:
                    help="schema to create fresh and run against")
     p.add_argument("--keep-schema", action="store_true",
                    help="do not drop the schema afterwards")
+    p.add_argument("--no-rollback", action="store_true",
+                   help="skip the rollback phase (leaves the ledger applied "
+                        "for UI demos; narrates the dry-run preview command)")
     return p
 
 
@@ -70,6 +73,8 @@ def _run_demo(args: argparse.Namespace) -> int:
         argv.append("--fast")
     if args.keep_schema:
         argv.append("--keep-schema")
+    if args.no_rollback:
+        argv.append("--no-rollback")
     return demo_main(argv)
 
 

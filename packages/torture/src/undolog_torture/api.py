@@ -13,10 +13,11 @@ Env honoured (inherited from the calling API route):
     DATABASE_URL      default postgresql+psycopg://undolog:undolog@localhost:5432/undolog
     UNDOLOG_SCHEMA    schema the engine searches (default "public")
 
-NOTE: the demo world is a deterministic in-memory simulation
-(build_worlds(seed)), so compensations/refunds mutate the rebuilt world,
-while the ledger row statuses in Postgres are updated for real. That is
-exactly what the task needs for the live timeline.
+NOTE: the ledger describes the CORRUPTED post-freeze demo world, so the
+bridge reconstructs that world truthfully (a scratch-schema replay of
+run_demo(rollback=False), cached per seed) before building executors —
+restores/compensations run against the world the ledger actually
+describes, while the ledger row statuses in Postgres update for real.
 """
 from __future__ import annotations
 
@@ -29,12 +30,18 @@ from typing import Any, Optional
 
 from undolog_core import Ledger
 
-from .dbutil import DEFAULT_DATABASE_URL, engine_for_schema
+from .dbutil import (DEFAULT_DATABASE_URL, drop_schema, engine_for_schema,
+                     setup_schema)
+from .demo import run_demo
 from .executors import build_executors
 from .registry_ext import load_torture_registry
-from .world import build_worlds
+from .world import World
 
 DEFAULT_SEED = 20260
+
+# World reconstructions are valid for the process lifetime (one CLI call
+# per invocation; the web route is a long-lived server and benefits).
+_WORLD_CACHE: dict[int, World] = {}
 
 
 def _normalize_url(url: str) -> str:
@@ -75,13 +82,45 @@ def _report_dict(report, dry_run: bool) -> dict[str, Any]:
     }
 
 
+def _demo_world(seed: int) -> World:
+    """The demo world in the state the ledger describes: corrupted, frozen,
+    NOT rolled back. Replaying run_demo(rollback=False) in a throwaway
+    schema yields exactly that world (~0.5s).
+
+    The scratch schema is unique per (pid, seed) so it can never collide
+    with the real ledger schema, and it is dropped in a finally block even
+    when the replay raises. The demo's fixed thread_id and unique
+    idempotency keys live and die entirely inside the scratch schema.
+    """
+    cached = _WORLD_CACHE.get(seed)
+    if cached is not None:
+        return cached
+    url = _normalize_url(os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL))
+    scratch = f"undolog_api_scratch_{os.getpid()}_{seed}"
+    setup_schema(url, scratch)
+    try:
+        engine = engine_for_schema(url, scratch)
+        try:
+            world = run_demo(engine, seed=seed, fast=True, narrate=None,
+                             rollback=False).world
+        finally:
+            engine.dispose()
+    finally:
+        drop_schema(url, scratch)
+    _WORLD_CACHE[seed] = world
+    return world
+
+
 def rollback(thread_id: str, to_seq: int, *, dry_run: bool,
              seed: int = DEFAULT_SEED) -> dict[str, Any]:
     ledger = _ledger()
     # Even a dry run needs the executor mapping: the core refuses entries
     # whose tool has no registered executor before it reaches the dry-run
-    # short-circuit, and the report must reflect the real plan.
-    executors = build_executors(build_worlds(seed))
+    # short-circuit, and the report must reflect the real plan. Crucially
+    # the executors must target the world the LEDGER describes (the
+    # corrupted one) — a fresh benign world makes restores/compensations
+    # fail against state that was never written.
+    executors = build_executors(_demo_world(seed))
     report = ledger.rollback(thread_id, to_seq, executors, dry_run=dry_run)
     return _report_dict(report, dry_run)
 
