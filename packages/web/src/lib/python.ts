@@ -121,3 +121,41 @@ export async function executeRollback(
   }
   return report;
 }
+
+// -- demo seeding -----------------------------------------------------------
+
+export interface DemoResult {
+  thread_id: string;
+  entry_count: number;
+}
+
+export function runDemo(): Promise<DemoResult> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      pythonBin(),
+      ["-m", "undolog_torture.api", "run-demo", "--json"],
+      {
+        cwd: repoRoot(),
+        timeout: 120_000,
+        env: {
+          ...process.env,
+          DATABASE_URL:
+            process.env.DATABASE_URL ??
+            "postgresql://undolog:undolog@localhost:5432/undolog",
+        },
+        maxBuffer: 8 * 1024 * 1024,
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(`bridge run-demo failed: ${stderr || error.message}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(stdout) as DemoResult);
+        } catch {
+          reject(new Error(`bridge returned non-JSON output: ${stdout.slice(0, 500)}`));
+        }
+      },
+    );
+  });
+}

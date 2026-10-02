@@ -125,6 +125,28 @@ def rollback(thread_id: str, to_seq: int, *, dry_run: bool,
     return _report_dict(report, dry_run)
 
 
+DEMO_SCHEMA = "undolog_demo"
+
+
+def run_demo_keep_schema(schema: Optional[str] = None,
+                         seed: int = DEFAULT_SEED) -> dict[str, Any]:
+    """Run the PocketOS demo with rollback=False against a freshly migrated
+    schema that is LEFT IN PLACE (--keep-schema semantics) for the web app
+    to render. Prints-friendly: returns the facts the UI needs.
+    """
+    target = schema or os.environ.get("UNDOLOG_SCHEMA", DEMO_SCHEMA)
+    url = _normalize_url(os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL))
+    setup_schema(url, target)
+    engine = engine_for_schema(url, target)
+    try:
+        result = run_demo(engine, seed=seed, fast=True, narrate=None,
+                          rollback=False)
+    finally:
+        engine.dispose()
+    return {"thread_id": result.rows[0].thread_id if result.rows else "",
+            "entry_count": len(result.rows)}
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="undolog_torture.api",
                                      description=__doc__)
@@ -136,7 +158,23 @@ def main(argv: Optional[list[str]] = None) -> int:
         p.add_argument("--seed", type=int, default=DEFAULT_SEED)
         p.add_argument("--json", action="store_true",
                        help="print the RollbackReport as JSON (default on)")
+    p_demo = sub.add_parser(
+        "run-demo",
+        help="execute the demo with rollback=False against schema "
+             f"{DEMO_SCHEMA} (keep-schema semantics) and print JSON "
+             "{thread_id, entry_count}")
+    p_demo.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    p_demo.add_argument("--schema", default=None,
+                        help=f"override target schema (default {DEMO_SCHEMA})")
+    p_demo.add_argument("--json", action="store_true",
+                        help="print the result as JSON (default on)")
     args = parser.parse_args(argv)
+
+    if args.command == "run-demo":
+        json.dump(run_demo_keep_schema(schema=args.schema, seed=args.seed),
+                  sys.stdout)
+        sys.stdout.write("\n")
+        return 0
 
     dry_run = args.command == "rollback-preview"
     result = rollback(args.thread, args.to_seq, dry_run=dry_run,

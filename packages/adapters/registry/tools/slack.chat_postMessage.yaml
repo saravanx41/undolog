@@ -1,0 +1,7 @@
+# slack.chat_postMessage — irreversible: a posted message cannot be
+# unsent. Ledger + containment only; rollback refuses with a blast-radius
+# entry. adapter: null — no HTTP ever happens for this tool.
+class: irreversible
+compensation: {type: none}
+snapshot_capable: false
+adapter: null

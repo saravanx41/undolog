@@ -1,0 +1,27 @@
+# s3.put_object — reversible overwrite. capture_before GETs the object
+# (raw body); a 404 means the object did not exist and the before-value is
+# null. Restore PUTs the old bytes back; restoring an overwrite of a
+# NON-EXISTENT object means the tool created it, so restore issues DELETE
+# instead (restore.on_null). base_url comes from args.endpoint (so tests
+# point it at a stub) with default http://s3.localhost.
+class: reversible
+compensation: {type: restore_before}
+snapshot_capable: true
+adapter:
+  type: rest
+  base_url: "{args.endpoint}"
+  default_base_url: "http://s3.localhost"
+  auth: {type: header, name: "X-Aws-Signature", env: AWS_SIGNATURE}
+  capture_before:
+    method: GET
+    path: "/{args.Bucket}/{args.Key}"
+    response: text
+    on_missing: null
+  capture_after: record_result
+  restore:
+    method: PUT
+    path: "/{args.Bucket}/{args.Key}"
+    body: before
+    on_null:
+      method: DELETE
+      path: "/{args.Bucket}/{args.Key}"

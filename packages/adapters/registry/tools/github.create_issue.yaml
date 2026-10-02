@@ -1,0 +1,20 @@
+# github.create_issue — create calls have no before-value; compensation
+# closes the created issue. The PATCH is idempotent: closing an already
+# closed issue is a no-op server-side, and the engine's compensation key is
+# sent as an Idempotency-Key header so replays are visible/deduped.
+class: compensatable
+compensation: {type: rest, action: compensate}
+snapshot_capable: false
+adapter:
+  type: rest
+  base_url: "https://api.github.com"
+  # Optional env override so tests can point the adapter at a stub server.
+  base_url_env: GITHUB_BASE_URL
+  auth: {type: bearer, env: GITHUB_TOKEN}
+  capture_before: null
+  capture_after: record_result
+  compensate:
+    method: PATCH
+    path: "/repos/{args.repo}/issues/{result.number}"
+    body: {state: closed}
+    idempotent: true

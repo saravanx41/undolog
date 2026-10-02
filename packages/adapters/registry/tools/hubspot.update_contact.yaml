@@ -1,0 +1,20 @@
+# hubspot.update_contact — reversible update. capture_before GETs the
+# contact and stores only response.properties (dotted-path `store`
+# selector); restore PATCHes those properties back.
+class: reversible
+compensation: {type: restore_before}
+snapshot_capable: true
+adapter:
+  type: rest
+  base_url: "https://api.hubapi.com"
+  base_url_env: HUBSPOT_BASE_URL
+  auth: {type: bearer, env: HUBSPOT_TOKEN}
+  capture_before:
+    method: GET
+    path: "/crm/v3/objects/contacts/{args.contactId}"
+    store: properties
+  capture_after: record_result
+  restore:
+    method: PATCH
+    path: "/crm/v3/objects/contacts/{args.contactId}"
+    body: {properties: before}

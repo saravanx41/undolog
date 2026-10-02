@@ -1,0 +1,17 @@
+# gcal.events_insert — creates have no before-value; compensation deletes
+# the inserted event. DELETE is idempotent by HTTP semantics; the engine's
+# compensation key is also sent as an Idempotency-Key header.
+class: compensatable
+compensation: {type: rest, action: compensate}
+snapshot_capable: false
+adapter:
+  type: rest
+  base_url: "https://www.googleapis.com/calendar/v3"
+  base_url_env: GOOGLE_BASE_URL
+  auth: {type: oauth, env: GOOGLE_TOKEN}
+  capture_before: null
+  capture_after: record_result
+  compensate:
+    method: DELETE
+    path: "/calendars/{args.calendarId}/events/{result.id}"
+    idempotent: true

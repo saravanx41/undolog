@@ -27,6 +27,10 @@ class ToolSpec:
     entry_class: str
     compensation: dict
     snapshot_capable: bool = False
+    # Raw adapter spec from the tool file (base_url/auth/capture/restore/
+    # compensate keys), or a dict of any other unknown keys. Core stores it
+    # verbatim and does not interpret it; adapters do.
+    adapter: Optional[dict] = None
 
 
 class Registry:
@@ -35,23 +39,66 @@ class Registry:
     def __init__(self, tools: Optional[Mapping[str, ToolSpec]] = None):
         self._tools: dict[str, ToolSpec] = dict(tools or {})
 
+    @staticmethod
+    def _make_spec(name: str, spec: Mapping) -> ToolSpec:
+        entry_class = spec["class"]
+        if entry_class not in ALLOWED_CLASSES:
+            raise ValueError(
+                f"tool {name!r}: invalid class {entry_class!r}; "
+                f"allowed: {ALLOWED_CLASSES}"
+            )
+        if "adapter" in spec:
+            # Explicit adapter spec (mapping or null), stored verbatim.
+            adapter = spec["adapter"]
+            if adapter is not None and not isinstance(adapter, dict):
+                raise ValueError(
+                    f"tool {name!r}: adapter spec must be a mapping or null"
+                )
+        else:
+            # Unknown keys are preserved (not interpreted) so non-core
+            # consumers can round-trip their own per-tool config.
+            extras = {
+                k: v
+                for k, v in spec.items()
+                if k not in ("class", "compensation", "snapshot_capable")
+            }
+            adapter = extras or None
+        return ToolSpec(
+            tool_name=name,
+            entry_class=entry_class,
+            compensation=dict(spec.get("compensation") or {"type": "none"}),
+            snapshot_capable=bool(spec.get("snapshot_capable", False)),
+            adapter=adapter,
+        )
+
     @classmethod
     def from_mapping(cls, data: Mapping) -> "Registry":
         tools = {}
         for name, spec in (data.get("tools") or {}).items():
-            entry_class = spec["class"]
-            if entry_class not in ALLOWED_CLASSES:
-                raise ValueError(
-                    f"tool {name!r}: invalid class {entry_class!r}; "
-                    f"allowed: {ALLOWED_CLASSES}"
-                )
-            tools[name] = ToolSpec(
-                tool_name=name,
-                entry_class=entry_class,
-                compensation=dict(spec.get("compensation") or {"type": "none"}),
-                snapshot_capable=bool(spec.get("snapshot_capable", False)),
-            )
+            tools[name] = cls._make_spec(name, spec)
         return cls(tools)
+
+    @classmethod
+    def from_dir(cls, registry_dir) -> "Registry":
+        """Load one tool per *.yaml file; the filename stem is the tool name.
+
+        Each file holds a single tool mapping (class/adapter/...). A nested
+        ``tool:`` key overrides the filename as the tool name.
+        """
+        tools = {}
+        for path in sorted(Path(registry_dir).glob("*.yaml")):
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            if not isinstance(data, dict):
+                raise ValueError(f"{path}: expected a mapping, got {type(data).__name__}")
+            name = data.pop("tool", None) or path.stem
+            tools[name] = cls._make_spec(name, data)
+        return cls(tools)
+
+    def merged(self, other: "Registry") -> "Registry":
+        """A new Registry with other's tools overlaid on this one's."""
+        tools = dict(self._tools)
+        tools.update(other._tools)
+        return Registry(tools)
 
     @classmethod
     def from_yaml(cls, path=None) -> "Registry":
@@ -82,9 +129,17 @@ _default: Optional[Registry] = None
 _default_lock = threading.Lock()
 
 
-def load_registry(path=None) -> Registry:
-    """Load a Registry; path=None loads the shipped seed registry."""
-    return Registry.from_yaml(path)
+def load_registry(path=None, registry_dir=None) -> Registry:
+    """Load a Registry.
+
+    path=None loads the shipped seed registry. registry_dir, when given, is
+    a directory of per-tool *.yaml files merged OVER the seed (directory
+    wins on conflicts).
+    """
+    registry = Registry.from_yaml(path)
+    if registry_dir is not None:
+        registry = registry.merged(Registry.from_dir(registry_dir))
+    return registry
 
 
 def default_registry() -> Registry:

@@ -84,6 +84,13 @@ def connect(schema: str) -> psycopg.Connection:
     )
 
 
+def stub_env(overrides: dict) -> dict:
+    """Env mapping for RestAdapter tests: explicit values over os.environ."""
+    import collections
+
+    return collections.ChainMap(overrides, os.environ)
+
+
 @pytest.fixture()
 def pg_conn(schema):
     """Schema-bound psycopg connection plus a fresh scratch accounts table."""

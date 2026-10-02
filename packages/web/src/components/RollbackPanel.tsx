@@ -2,21 +2,24 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/toast";
 import type { RollbackItem, RollbackReport } from "@/lib/python";
 
 function ItemList({ title, items, empty }: { title: string; items: RollbackItem[]; empty: string }) {
   return (
-    <div>
-      <strong>
-        {title} ({items.length})
-      </strong>
+    <div className="mt-3">
+      <p className="text-sm font-medium">
+        {title} <Badge variant="muted" className="ml-1">{items.length}</Badge>
+      </p>
       {items.length === 0 ? (
-        <p className="muted">{empty}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{empty}</p>
       ) : (
-        <ul>
+        <ul className="mt-1 space-y-1">
           {items.map((item) => (
-            <li key={`${item.entry_id ?? item.seq}-${item.action}`}>
-              seq {item.seq} · {item.tool_name} · {item.entry_class}
+            <li key={`${item.entry_id ?? item.seq}-${item.action}`} className="text-sm text-muted-foreground">
+              <span className="font-mono text-xs">seq {item.seq}</span> · {item.tool_name} · {item.entry_class}
               {item.reason ? ` — ${item.reason}` : ""}
             </li>
           ))}
@@ -36,6 +39,7 @@ export function RollbackPanel({
   maxSeq: number;
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [target, setTarget] = useState(maxSeq);
   const [preview, setPreview] = useState<RollbackReport | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -76,8 +80,21 @@ export function RollbackPanel({
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? res.statusText);
-      setResult(body as RollbackReport);
+      const report = body as RollbackReport;
+      setResult(report);
       router.refresh();
+      if (report.complete) {
+        toast({
+          title: "Rollback complete",
+          description: `${report.summary.restored} restored, ${report.summary.compensated} refunded${report.summary.irreversible > 0 ? `, ${report.summary.irreversible} irreversible in blast radius` : ""}`,
+        });
+      } else {
+        toast({
+          title: "Rollback halted (partial)",
+          description: `${report.summary.failed} operation(s) failed — see the report below.`,
+          variant: "destructive",
+        });
+      }
     } catch (e) {
       setRunError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -86,9 +103,9 @@ export function RollbackPanel({
   }
 
   return (
-    <section className="rollback-panel">
-      <h2>Rollback — drag to checkpoint</h2>
-      <p className="muted">
+    <section className="rounded-lg border bg-card p-5">
+      <h2 className="text-base font-semibold">Rollback — drag to checkpoint</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
         Undo every <em>applied</em> action with seq &gt; {target}. Preview below is a
         dry run produced by the real rollback engine.
       </p>
@@ -99,20 +116,21 @@ export function RollbackPanel({
         value={target}
         disabled={running}
         onChange={(e) => setTarget(Number(e.target.value))}
+        className="mt-4"
       />
-      <div className="scrub-labels">
+      <div className="flex justify-between text-xs text-muted-foreground">
         <span>undo everything ({minSeq})</span>
         <span>keep through seq {target}</span>
         <span>undo nothing ({maxSeq})</span>
       </div>
 
-      <div className="preview-box">
-        {previewError && <p className="error">{previewError}</p>}
-        {!previewError && loading && !preview && <p className="muted">computing dry run…</p>}
+      <div className="mt-4 border-t border-dashed pt-4">
+        {previewError && <p className="text-sm text-red-400">{previewError}</p>}
+        {!previewError && loading && !preview && <p className="text-sm text-muted-foreground">computing dry run…</p>}
         {preview && !previewError && (
           <>
-            <p>
-              Dry run to seq <strong>{preview.to_seq}</strong>: will restore{" "}
+            <p className="text-sm">
+              Dry run to seq <strong className="font-mono">{preview.to_seq}</strong>: will restore{" "}
               <strong>{preview.summary.restored}</strong>, compensate{" "}
               <strong>{preview.summary.compensated}</strong>,{" "}
               <strong>{preview.summary.irreversible}</strong> irreversible — nothing
@@ -134,24 +152,24 @@ export function RollbackPanel({
             )}
           </>
         )}
-        <p>
-          <button className="primary" disabled={running} onClick={confirm}>
+        <div className="mt-4">
+          <Button onClick={confirm} disabled={running}>
             {running ? "rolling back…" : `Confirm rollback to seq ${target}`}
-          </button>{" "}
-          {loading && preview && <span className="muted">refreshing preview…</span>}
-        </p>
+          </Button>{" "}
+          {loading && preview && <span className="text-xs text-muted-foreground">refreshing preview…</span>}
+        </div>
         {running && (
-          <p className="running">
+          <p className="mt-3 text-sm text-sky-400">
             Rollback running — the thread stays frozen until the engine finishes and
             releases the freeze…
           </p>
         )}
-        {runError && <p className="error">{runError}</p>}
+        {runError && <p className="mt-3 text-sm text-red-400">{runError}</p>}
         {result && !running && (
-          <div className={result.complete ? "" : "error"}>
-            <p>
+          <div className={result.complete ? "mt-3" : "mt-3 text-red-400"}>
+            <p className="text-sm">
               Rollback {result.complete ? "complete" : "HALTED (partial)"} to seq{" "}
-              {result.to_seq}: {result.summary.restored} restored,{" "}
+              <span className="font-mono">{result.to_seq}</span>: {result.summary.restored} restored,{" "}
               {result.summary.compensated} compensated, {result.summary.irreversible}{" "}
               irreversible, {result.summary.failed} failed.
             </p>
