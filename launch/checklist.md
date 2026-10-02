@@ -46,3 +46,18 @@ Ordered. Do not skip steps 1–2: everything downstream quotes them.
 - [ ] Reply to first comments with the FAQ answers; link the torture
       spec `packages/torture/SPEC.md` when asked "how do you know it
       works"
+
+---
+
+## Status (2026-10-03)
+
+- [x] Git init + remote + MIT LICENSE — https://github.com/saravanx41/undolog
+- [x] Video script numbers verified against live `--no-rollback` output (3 restores / 1 refund / 2 irreversible; end card 500/500 across 5 seeds)
+- [x] HN draft updated: idempotency-bug catch, 500/500 × 5 seeds, 121 tests, issue #1
+- [x] Tool Safety Registry repo published (MIT, PRs welcome) — https://github.com/saravanx41/tool-safety-registry
+- [x] Clean-venv smoke: fresh Python 3.12 venv, `pip install -e .`, `undolog demo --fast` → exit 0, hashes match dev venv
+- [ ] **PyPI upload — BLOCKED: no PyPI token on this machine.** Set `UV_PUBLISH_TOKEN`/`PYPI_API_TOKEN` (or `~/.pypirc`) and run: `uv publish` (or twine) for undolog-core, undolog-adapters, undolog-torture, then undolog. After upload, re-run the clean-venv smoke against PyPI (`uv venv /tmp/x && uv pip install undolog && undolog demo`) to prove stranger-install works.
+- [ ] Record the 90s video (lead frame: dry-run preview panel)
+- [ ] Show HN (Tue–Thu ~9am ET, be in thread 2h) — copy in launch/HN-post.md
+- [ ] Product Hunt 2–3 days later — listing in launch/PRODUCT_HUNT.md
+- [ ] Real-Stripe TS-04 once STRIPE_SECRET_KEY available (issue #1)
